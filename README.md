@@ -1,6 +1,6 @@
 # comento
 
-> A Vue.js project
+> comento quiz
 
 ## Build Setup
 

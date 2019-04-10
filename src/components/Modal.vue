@@ -4,7 +4,11 @@
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">필터</h5>
-          <button type="button" @click="close" class="close" data-dismiss="modal" aria-label="Close">
+          <button type="button" 
+            @click="close" 
+            class="close" 
+            data-dismiss="modal" 
+            aria-label="Close">
             <span aria-hidden="true">&times;</span>
           </button>
         </div>
@@ -59,7 +63,7 @@ export default {
     },
     close() {
       console.log('close');
-      this.$emit('handle-modal', this.isFilterOn);
+      this.$emit('handle-modal');
     },
     setCheckedCategories() {
       this.selectedCategories.forEach((category) => {

@@ -1,7 +1,7 @@
 {
   "name": "comento",
   "version": "1.0.0",
-  "description": "A Vue.js project",
+  "description": "comento quiz",
   "author": "kbs",
   "private": true,
   "scripts": {
@@ -18,6 +18,7 @@
     "axios": "^0.18.0",
     "bootstrap": "^4.3.1",
     "bootstrap-vue": "^2.0.0-rc.17",
+    "jquery": "^3.3.1",
     "less": "^3.9.0",
     "less-loader": "^4.1.0",
     "lodash": "^4.17.11",

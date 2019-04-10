@@ -1,7 +1,7 @@
 <template>
   <div class="project">
     <div>
-      <b-button @click="openModal">필터</b-button>
+      <b-button @click="handleModal">필터</b-button>
       <b-nav>
         <b-nav-item
           :class="{ active: ord === 'asc'}"
@@ -35,9 +35,12 @@
           </div>
         </div>
 
-        <div class="adBox" :key="index" v-if="index%11 === 4">
+        <div class="adBox" ref="adBox" :index="index" :key="index" v-if="index%11 === 4">
           <div class="header">
-            <div>Sponsered</div>
+            <div class="title">Sponsered</div>
+            <button type="button" @click="closeAd(index)" class="close" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
           </div>
           <div class="adContainer">
             <div class="bg-wrap">
@@ -47,7 +50,9 @@
             </div>
             <div class="content">
               <div class="title">{{list.title}}</div>
-              <div class="contents">{{list.contents}}</div>
+              <div ref="adContentsDiv" :index="index" class="contents">
+                <p ref="adContentsP" :index="index">{{list.contents}}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -86,7 +91,6 @@
               <div v-for="(reply, index) in replies" :key="index" class="comment-item">
                 <span class="email">{{reply.email}}</span>
                 <span class="date">{{reply.updated_at}}</span>
-                <!--<span class="no">{{reply.no}}</span>-->
                 <p class="text">{{reply.contents}}</p>
               </div>
             </div>
@@ -100,8 +104,9 @@
 </template>
 
 <script>
-import axios from 'axios';
 import _ from 'lodash';
+import $ from 'jquery';
+import axios from 'axios';
 import qs from 'qs';
 import InfiniteLoading from 'vue-infinite-loading';
 import Modal from './Modal';
@@ -125,12 +130,25 @@ export default {
       isDetailOn: false,
       article: null,
       replies: null,
+      isUpdated: false,
     };
   },
   mounted() {
     this.$nextTick(() => {
  
     });
+  },
+  updated() {
+    this.$nextTick(() => {
+      this.isUpdated = !this.isUpdated;
+    });
+  },
+  watch: {
+    isUpdated() {
+      if(this.isUpdated) {
+        this.splitContents();
+      }
+    },
   },
   methods: {
     async getData() {
@@ -140,18 +158,17 @@ export default {
       await this.getContent();
       console.log('get Ad before');
       await this.getAd();
-    },
-    // 모달 열기
-    openModal() {
-      this.isFilterOn = !this.isFilterOn;
+      console.log('split contents text');
+      //this.splitContents();
     },
     // 디테일 모달 열기
     openDetailModal(info) {
-      const getInfo = async () => {
+      const openDetail = async () => {
         await this.getDetailInfo(info.no);
         this.isDetailOn = !this.isDetailOn;
-      }
-      getInfo();
+      };
+      openDetail();
+      $('body').css('overflow', 'hidden');
     },
     // 필터 카테고리
     async getCategory() {
@@ -206,6 +223,7 @@ export default {
       }).then((response) => {
         if (response.status === 200) {
           this.ad = response.data.list;
+          this.ad[0].split = false;
           console.log('get Ad!');
         }
       });
@@ -227,8 +245,14 @@ export default {
       });
     },
     // 모달 창 컨트롤
-    handleModal(status) {
-      this.isFilterOn = !status;
+    handleModal() {
+      this.isFilterOn = !this.isFilterOn;
+      if(this.isFilterOn) {
+        $('body').css('overflow', 'hidden');
+      }
+      else {
+        $('body').css('overflow', '');
+      }
     },
     // 정렬 방법 컨트롤
     handleOrder(order) {
@@ -259,10 +283,11 @@ export default {
       const loadData = async () => {
         console.log('now page', this.page);
         await this.getData();
+        console.log('end get data');
         if(!_.isEqual(beforeContent, this.content)) {
           let tmp = [];
           // 그려줄 리스트 배열 생성
-          tmp = this.content;
+          tmp.push(...this.content);
           tmp.splice(4, 0, this.ad[0]);
           console.log('tmp arr', tmp);
           this.lists.push(...tmp);
@@ -280,13 +305,65 @@ export default {
     },
     closeDetailModal() {
       this.isDetailOn = !this.isDetailOn;
+      $('body').css('overflow', '');
+    },
+    // 글 내용 여러줄 줄이기
+    splitContents() {
+      let pHeight = null;
+      let divHeight = null;
+      let words = [];
+      let tmpP = $('<p>');
+      let pTag;
+      let divTag;
+
+      this.lists.forEach((list, index) => {
+        if(index%11 === 4 && !list.split) {
+          let tmp = _.split(list.contents, ' ');
+          words.push(...tmp);
+          this.$refs.adContentsP.forEach((p) => {
+            if(parseInt($(p).attr('index'), 10) === index) {
+              pTag = p;
+            }
+          });
+          this.$refs.adContentsDiv.forEach((div) => {
+            if(parseInt($(div).attr('index'), 10) === index) {
+              divTag = div;
+            }
+          });
+          pHeight = parseInt($(pTag).css('height'), 10);
+          divHeight = parseInt($(divTag).css('height'), 10);
+
+          while(pHeight > divHeight) {
+            words.pop();
+            let string = _.join(words, ' ');
+            tmpP.text(string);
+            $(divTag).append(tmpP);
+            pHeight = parseInt(tmpP.css('height'), 10);
+            if(pHeight < divHeight) {
+              string = string.concat('...');
+              list.contents = string;
+              list.split = true;
+              tmpP.remove();
+              break;
+            }
+          }
+
+        }
+      });
+    },
+    closeAd(index) {
+      this.$refs.adBox.forEach((adBox) => {
+        if(parseInt($(adBox).attr('index'), 10) === index) {
+          $(adBox).css('display', 'none');
+        }
+      });
+      //this.lists.splice(index, 1);
     },
     // 다음 메소드 자리
   },
 };
 </script>
 
-<!-- Add "scoped" attribute to limit CSS to this component only -->
 <style lang="less">
 @mobile: ~'(max-width: 480px)';
 @default-margin: 2%;
@@ -366,7 +443,18 @@ div.adBox {
   padding: @default-margin;
   border-radius: 0.3rem;
   .header {
+    overflow: hidden;
     margin-bottom: @default-margin;
+    .title {
+      float: left;
+    }
+    .close {
+      float: right;
+      height: 1rem;
+      span {
+        line-height: 0.5rem;
+      }
+    }
   }
   .adContainer {
     overflow: hidden;
@@ -402,15 +490,9 @@ div.adBox {
         margin-top: 1%;
         text-overflow: ellipsis!important;
         overflow: hidden;
-        max-height: 168px;
+        max-height: 156px;
         white-space: normal;
-        line-height: 1.2;
-        height: 8.4em;
-        text-align: left;
-        word-wrap: break-word;
-        display: -webkit-box;
-        -webkit-line-clamp: 7;
-        -webkit-box-orient: vertical;
+        line-height: 1.3;
       }
     }
   }
@@ -444,6 +526,7 @@ div.adBox {
     }
     .text {
       margin: 1rem 0 0;
+      user-select: none;
     }
   }
   .detail-comment {
@@ -483,6 +566,7 @@ div.modal {
   background-color: rgba(0,0,0,0.7);
 }
 div.modal-dialog {
+  height: 90%;
   min-height: calc(100% - 1rem);
   display: flex;
   align-items: center;
